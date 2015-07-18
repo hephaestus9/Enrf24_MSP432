@@ -1,0 +1,92 @@
+// nrf24_server.pde
+// -*- mode: C++ -*-
+// Example sketch showing how to create a simple messageing server
+// with the RH_NRF24 class. RH_NRF24 class does not provide for addressing or
+// reliability, so you should only use RH_NRF24  if you do not need the higher
+// level messaging abilities.
+// It is designed to work with the other example nrf24_client
+// Tested on Uno with Sparkfun NRF25L01 module
+// Tested on Anarduino Mini (http://www.anarduino.com/mini/) with RFM73 module
+// Tested on Arduino Mega with Sparkfun WRL-00691 NRF25L01 module
+
+// Edited 17 Jul 2015 - J.Brian
+
+#include <Enrf24.h>
+#include <nRF24L01.h>
+#include <string.h>
+#include <SPI.h>
+
+Enrf24 radio(17, 18, 19);  // CE, CSN, IRQ
+const uint8_t addr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
+
+void dump_radio_status_to_serialport(uint8_t);
+
+void setup() 
+{
+  Serial.begin(9600);
+  delay(100);
+  
+  SPI.begin();
+  SPI.setDataMode(SPI_MODE0);
+  SPI.setBitOrder(MSBFIRST);
+  
+  radio.begin();
+  void dump_radio_status_to_serialport(uint8_t);  
+
+  radio.setRXaddress((void*)addr); 
+  radio.setTXaddress((void*)addr); 
+  
+  radio.enableRX();  // Start listening
+}
+
+void loop()
+{
+  char inbuf[33];
+  
+  dump_radio_status_to_serialport(radio.radioState());  // Should show Receive Mode
+  
+  Serial.println("Sending to Enrf24_server");
+  char data[] = "Hello World!";
+  radio.print(data);
+  radio.flush();
+  
+  while (!radio.available(true))
+    ;
+  
+  if (radio.read(inbuf)) { 
+    Serial.print("Received reply: ");
+    Serial.println(inbuf);
+  }
+  else {
+    Serial.println("Receive Failed!");
+  }
+}
+
+void dump_radio_status_to_serialport(uint8_t status)
+{
+  Serial.print("Enrf24 radio transceiver status: ");
+  switch (status) {
+    case ENRF24_STATE_NOTPRESENT:
+      Serial.println("NO TRANSCEIVER PRESENT");
+      break;
+
+    case ENRF24_STATE_DEEPSLEEP:
+      Serial.println("DEEP SLEEP <1uA power consumption");
+      break;
+
+    case ENRF24_STATE_IDLE:
+      Serial.println("IDLE module powered up w/ oscillators running");
+      break;
+
+    case ENRF24_STATE_PTX:
+      Serial.println("Actively Transmitting");
+      break;
+
+    case ENRF24_STATE_PRX:
+      Serial.println("Receive Mode");
+      break;
+
+    default:
+      Serial.println("UNKNOWN STATUS CODE");
+  }
+}
